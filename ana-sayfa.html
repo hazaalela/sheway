@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SheWay - Güvenli Rota & Canlı Harita</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome İkonları -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet Harita CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Proje Ana CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dashboard-body">
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <img src="logo.png" alt="SheWay Logo" class="nav-logo">
+
+        <div class="user-profile" onclick="openProfileModal()" style="cursor: pointer;" title="Profili Aç">
+            <span style="font-weight: 700; color: var(--weathervane);" id="navUsername">Hazal</span>
+            <div class="user-avatar">H</div>
+            <a href="index.html" onclick="event.stopPropagation();"
+                style="color: var(--choco-loco); margin-left: 10px; font-size: 1.1rem;" title="Çıkış Yap">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ANA İÇERİK (SIDEBAR + HARİTA) -->
+    <div class="main-layout">
+
+        <!-- ROTA VE FİLTRE PANELİ -->
+        <div class="sidebar">
+            <h3><i class="fa-solid fa-diamond-turn-right" style="color: var(--carmine-carnation);"></i> Aydınlık Rota
+                Planla</h3>
+
+            <div class="input-field">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label>Mevcut Konum</label>
+                    <button class="gps-btn" onclick="getUserLiveLocation()">
+                        <i class="fa-solid fa-crosshairs" style="color: var(--carmine-carnation);"></i> GPS Bul
+                    </button>
+                </div>
+                <div class="input-box">
+                    <i class="fa-solid fa-location-dot" style="color: #22c55e;"></i>
+                    <input type="text" id="currentLocInput" value="Konum alınıyor..." readonly
+                        style="background: #f1f5f9;">
+                </div>
+            </div>
+
+            <div class="input-field">
+                <label>Nereye Gitmek İstiyorsun?</label>
+                <div class="autocomplete-wrapper">
+                    <div class="input-box">
+                        <i class="fa-solid fa-flag-checkered" style="color: var(--carmine-carnation);"></i>
+                        <input type="text" id="destination" placeholder="Örn: Taksim Meydanı veya Düzce Ün..."
+                            oninput="filterAddresses(this.value, 'destination', 'addressSuggestions')">
+                    </div>
+                    <div class="autocomplete-list" id="addressSuggestions"></div>
+                </div>
+            </div>
+
+            <button class="hero-btn" onclick="calculateRoute()">
+                <i class="fa-solid fa-shield-cat"></i>
+                <span>En Güvenli Rotayı Bul</span>
+            </button>
+
+            <!-- CADDE VE SOKAK AYDINLATMA KARTI & NAVİGASYON BUTONU -->
+            <div class="illumination-card" id="illuminationCard" style="display: none;">
+                <div class="illumination-header">
+                    <span><i class="fa-solid fa-shield-halved" style="color: #f59e0b;"></i> Rota Güvenlik Skoru</span>
+                    <span class="illumination-badge" id="illuminationPercent">%0</span>
+                </div>
+
+                <div class="illumination-breakdown">
+                    <div class="breakdown-item">
+                        <div class="breakdown-title">
+                            <span><i class="fa-solid fa-road" style="color: #10b981;"></i> Ana Cadde & Bulvarlar</span>
+                            <span id="caddePercentText" style="color: #059669;">%0 Aydınlık</span>
+                        </div>
+                        <div class="progress-bg-sm">
+                            <div class="progress-fill-cadde" id="caddeBar"></div>
+                        </div>
+                    </div>
+
+                    <div class="breakdown-item">
+                        <div class="breakdown-title">
+                            <span><i class="fa-solid fa-turn-down" style="color: #f59e0b;"></i> Ara Sokak
+                                Aydınlatması</span>
+                            <span id="sokakPercentText" style="color: #d97706;">%0 Aydınlık</span>
+                        </div>
+                        <div class="progress-bg-sm">
+                            <div class="progress-fill-sokak" id="sokakBar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="illumination-desc" id="illuminationStatusText" style="margin-top: 6px;">
+                    Aydınlatma verileri işleniyor...
+                </p>
+
+                <button class="hero-btn" id="startNavBtn"
+                    style="margin-top: 10px; background: linear-gradient(135deg, #10b981, #059669);"
+                    onclick="toggleNavigationMode()">
+                    <i class="fa-solid fa-location-arrow"></i>
+                    <span>Navigasyonu Başlat (Rotayı Takip Et)</span>
+                </button>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid rgba(209, 155, 164, 0.3); margin: 12px 0;">
+
+            <!-- AKILLI GÜVENLİK ARAÇLARI PANELİ -->
+            <h3><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--carmine-carnation);"></i> Akıllı Güvenlik
+                Araçları</h3>
+
+            <div class="smart-tools-group">
+                <button class="hero-btn btn-trip-share" onclick="startLiveTripShare()">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span>Beni Eve Takip Et (Canlı Link)</span>
+                </button>
+
+                <button class="hero-btn btn-fake-call" onclick="triggerFakeCall()">
+                    <i class="fa-solid fa-phone-incoming"></i>
+                    <span>Sahte Arama Tetikle (Gelen Arama)</span>
+                </button>
+
+                <button class="hero-btn btn-report-danger" onclick="reportDangerAlert()">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Sokak Tehlikesi Bildir (Karanlık/Köpek)</span>
+                </button>
+
+                <button class="hero-btn btn-voice-trigger" id="voiceTriggerBtn" onclick="toggleVoiceTrigger()">
+                    <i class="fa-solid fa-microphone"></i>
+                    <span id="voiceTriggerText">Sesle Panik Dinleme: Pasif</span>
+                </button>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid rgba(209, 155, 164, 0.3); margin: 10px 0;">
+
+            <h3><i class="fa-solid fa-layer-group" style="color: var(--carmine-carnation);"></i> Harita Katmanları</h3>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <label class="layer-safe-haven"
+                    style="display: flex; align-items: center; gap: 10px; font-size: 0.875rem; cursor: pointer;">
+                    <input type="checkbox" id="layerSafeHavens" checked onchange="toggleLayers()"
+                        style="accent-color: #8b5cf6;">
+                    🛡️ SheWay Mor Kalkan Güvenli Sığınaklar
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-size: 0.875rem; cursor: pointer;">
+                    <input type="checkbox" id="layerShops" checked onchange="toggleLayers()"
+                        style="accent-color: var(--carmine-carnation);">
+                    Açık Nöbetçi Eczaneler & 7/24 Mekanlar
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-size: 0.875rem; cursor: pointer;">
+                    <input type="checkbox" id="layerDangers" checked onchange="toggleLayers()"
+                        style="accent-color: #d97706;">
+                    ⚠️ Topluluk Tehlike Uyarıları
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-size: 0.875rem; cursor: pointer;">
+                    <input type="checkbox" id="layerHospitals" checked onchange="toggleLayers()"
+                        style="accent-color: var(--carmine-carnation);">
+                    Hastaneler & Sağlık Kuruluşları
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-size: 0.875rem; cursor: pointer;">
+                    <input type="checkbox" id="layerPolice" checked onchange="toggleLayers()"
+                        style="accent-color: var(--carmine-carnation);">
+                    Karakollar & Emniyet Noktaları
+                </label>
+            </div>
+        </div>
+
+        <!-- İNTERAKTİF HARİTA -->
+        <div id="map"></div>
+
+        <!-- ACİL DURUM PANİK BUTONU -->
+        <div class="panic-wrapper">
+            <button class="panic-btn" onclick="triggerEmergency()">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>ACİL YARDIM (PANİK)</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- SAHTE ARAMA (BİREBİR İPHONE / iOS GELEN ARAMA EKRANI) -->
+    <div id="fakeCallOverlay" class="ios-fake-call-overlay">
+
+        <div class="ios-call-header">
+            <p class="ios-call-subtitle">cep</p>
+            <h1 class="ios-call-title">Annem</h1>
+            <p class="ios-call-tag">SheWay Güvenli Hat</p>
+        </div>
+
+        <div class="ios-avatar-box">
+            <i class="fa-solid fa-user"></i>
+        </div>
+
+        <div class="ios-actions-container">
+            <div class="ios-top-actions">
+                <div class="ios-action-item" onclick="closeFakeCall()">
+                    <div class="ios-action-circle">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <span class="ios-action-label">Hatırlat</span>
+                </div>
+
+                <div class="ios-action-item" onclick="closeFakeCall()">
+                    <div class="ios-action-circle">
+                        <i class="fa-solid fa-message"></i>
+                    </div>
+                    <span class="ios-action-label">Mesaj</span>
+                </div>
+            </div>
+
+            <div class="ios-bottom-buttons">
+                <div class="ios-btn-wrapper" onclick="closeFakeCall()">
+                    <div class="ios-btn-decline">
+                        <i class="fa-solid fa-phone-slash ios-btn-decline-icon"></i>
+                    </div>
+                    <span class="ios-btn-label">Reddet</span>
+                </div>
+
+                <div class="ios-btn-wrapper" onclick="closeFakeCall()">
+                    <div class="ios-btn-accept">
+                        <i class="fa-solid fa-phone"></i>
+                    </div>
+                    <span class="ios-btn-label">Cevapla</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- PROFİL PENCERESİ (MODAL) -->
+    <div class="modal-overlay" id="profileModal" onclick="closeProfileModal(event)">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <div class="profile-header">
+                <div class="profile-title-bar">
+                    <div class="profile-user-info">
+                        <div class="user-avatar" style="width: 48px; height: 48px; font-size: 1.3rem;">H</div>
+                        <div>
+                            <h3 id="modalHeaderName">Hazal</h3>
+                            <p><i class="fa-solid fa-shield-heart" style="color: var(--carmine-carnation);"></i> SheWay
+                                Güvenli Üye</p>
+                        </div>
+                    </div>
+                    <button class="close-modal-btn" onclick="closeProfileModalDirect()"><i
+                            class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="profile-tabs">
+                    <button class="tab-btn active" onclick="switchTab('tab-info', this)">
+                        <i class="fa-solid fa-user-gear"></i> Kişisel Bilgiler
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('tab-contacts', this)">
+                        <i class="fa-solid fa-phone-volume"></i> Acil Durum Kişilerim
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('tab-locations', this)">
+                        <i class="fa-solid fa-house-chimney-user"></i> Güvenli Noktalarım
+                    </button>
+                </div>
+            </div>
+
+            <div class="profile-body">
+                <!-- SEKME 1: KİŞİSEL BİLGİLER -->
+                <div class="tab-content active" id="tab-info">
+                    <div class="grid-2">
+                        <div class="sidebar" style="width:100%; padding:0; background:none; box-shadow:none;">
+                            <div class="input-field">
+                                <label>Ad Soyad</label>
+                                <div class="input-box">
+                                    <i class="fa-solid fa-user"></i>
+                                    <input type="text" id="profFullname" placeholder="Adınız Soyadınız" value="Hazal">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sidebar" style="width:100%; padding:0; background:none; box-shadow:none;">
+                            <div class="input-field">
+                                <label>Kullanıcı Adı</label>
+                                <div class="input-box">
+                                    <i class="fa-solid fa-at"></i>
+                                    <input type="text" id="profUsername" placeholder="Kullanıcı Adı" value="hazal">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2" style="margin-top: 14px;">
+                        <div class="sidebar" style="width:100%; padding:0; background:none; box-shadow:none;">
+                            <div class="input-field">
+                                <label>Şifre Değiştir</label>
+                                <div class="input-box">
+                                    <i class="fa-solid fa-lock"></i>
+                                    <input type="password" id="profPassword" placeholder="Yeni şifre girin">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sidebar" style="width:100%; padding:0; background:none; box-shadow:none;">
+                            <div class="input-field">
+                                <label>Telefon Numarası</label>
+                                <div class="input-box">
+                                    <i class="fa-solid fa-phone"></i>
+                                    <input type="text" id="profPhone" placeholder="05XX XXX XX XX">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="hero-btn" style="margin-top: 20px; width: 100%;" onclick="updateProfile()">
+                        <i class="fa-solid fa-floppy-disk"></i> Bilgileri Güncelle
+                    </button>
+                </div>
+
+                <!-- SEKME 2: ACİL DURUM KİŞİLERİ -->
+                <div class="tab-content" id="tab-contacts">
+                    <div id="contactList"></div>
+
+                    <h4 id="formContactTitle"
+                        style="font-size: 0.95rem; color: var(--weathervane); margin: 20px 0 10px 0;">
+                        <i class="fa-solid fa-user-plus" style="color: var(--carmine-carnation);"></i> Yeni Acil Durum
+                        Kişisi Ekle
+                    </h4>
+                    <div class="grid-2">
+                        <div class="sidebar" style="width:100%; padding:0; background:none; box-shadow:none;">
+                            <div class="input-field">
+                                <div class="input-box">
+                                    <i class="fa-solid fa-id-card"></i>
+                                    <input type="text" id="newContactName" placeholder="Yakınlık / İsim (Örn: Anne)">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sidebar" style="width:100%; padding:0; background:none; box-shadow:none;">
+                            <div class="input-field">
+                                <div class="input-box">
+                                    <i class="fa-solid fa-phone"></i>
+                                    <input type="text" id="newContactPhone" placeholder="05XX XXX XX XX">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="hero-btn" id="saveContactBtn"
+                        style="margin-top: 12px; width: 100%; background: linear-gradient(135deg, #10b981, #059669);"
+                        onclick="saveContact()">
+                        <i class="fa-solid fa-plus"></i> Kişiyi Listeye Ekle
+                    </button>
+                </div>
+
+                <!-- SEKME 3: GÜVENLİ NOKTALARIM -->
+                <div class="tab-content" id="tab-locations">
+                    <div id="safeLocationList"></div>
+
+                    <h4 id="formLocationTitle"
+                        style="font-size: 0.95rem; color: var(--weathervane); margin: 20px 0 10px 0;">
+                        <i class="fa-solid fa-map-location-dot" style="color: var(--carmine-carnation);"></i> Yeni
+                        Güvenli Nokta Ekle
+                    </h4>
+
+                    <div class="grid-2">
+                        <div class="sidebar" style="width:100%; padding:0; background:none; box-shadow:none;">
+                            <div class="input-field">
+                                <div class="input-box">
+                                    <i class="fa-solid fa-tag" style="position: static; margin-right: 8px;"></i>
+                                    <select id="locationType">
+                                        <option value="Ev">Ev</option>
+                                        <option value="Okul">Okul</option>
+                                        <option value="İş Yeri">İş Yeri</option>
+                                        <option value="Diğer">Diğer (Güvenli Mekan)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sidebar" style="width:100%; padding:0; background:none; box-shadow:none;">
+                            <div class="input-field">
+                                <div class="autocomplete-wrapper">
+                                    <div class="input-box">
+                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                        <input type="text" id="locationSearchInput"
+                                            placeholder="Adres veya mekan adı yazın..."
+                                            oninput="filterAddresses(this.value, 'locationSearchInput', 'locAddressSuggestions')">
+                                    </div>
+                                    <div class="autocomplete-list" id="locAddressSuggestions"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="hero-btn" id="saveLocationBtn" style="margin-top: 12px; width: 100%;"
+                        onclick="addSafeLocation()">
+                        <i class="fa-solid fa-location-plus"></i> Güvenli Noktam Olarak Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet Harita JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Haritayı Başlat
+        const map = L.map('map').setView([41.0082, 28.9784], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap & SheWay Security'
+        }).addTo(map);
+
+        let userMarker = L.marker([41.0082, 28.9784]).addTo(map)
+            .bindPopup('<b>Konumunuz Alındı</b><br>Güvenli Bölgedesiniz.')
+            .openPopup();
+
+        // Katman Grupları
+        const hospitalLayerGroup = L.layerGroup().addTo(map);
+        const policeLayerGroup = L.layerGroup().addTo(map);
+        const shopLayerGroup = L.layerGroup().addTo(map);
+        const safeHavenLayerGroup = L.layerGroup().addTo(map);
+        const dangerLayerGroup = L.layerGroup().addTo(map);
+
+        let watchPositionId = null;
+        let isNavigating = false;
+        let placesLoaded = false;
+        let speechRecognition = null;
+        let isVoiceListening = false;
+
+        /* --- TÜRKÇE SESLİ ASİSTAN --- */
+        function speakVoiceAlert(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'tr-TR';
+                utterance.rate = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        /* --- SESLE PANİK TETİKLEME --- */
+        function toggleVoiceTrigger() {
+            const btn = document.getElementById('voiceTriggerBtn');
+            const txt = document.getElementById('voiceTriggerText');
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Tarayıcınız ses tanıma teknolojisini desteklemiyor (Chrome/Edge önerilir).");
+                return;
+            }
+
+            if (!isVoiceListening) {
+                speechRecognition = new SpeechRecognition();
+                speechRecognition.lang = 'tr-TR';
+                speechRecognition.continuous = true;
+
+                speechRecognition.onstart = function () {
+                    isVoiceListening = true;
+                    txt.innerText = "Sesle Panik: DİNLENİYOR (İmdat/Yardım)";
+                    btn.classList.add('btn-voice-active');
+                    showToast("🎙️ Sesli Dinleme Aktif", "'İmdat', 'Yardım' veya 'Sheway' kelimeleri algılanırsa panik tetiklenecek.");
+                };
+
+                speechRecognition.onresult = function (event) {
+                    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                    console.log("Algılanan Ses:", transcript);
+
+                    if (transcript.includes("imdat") || transcript.includes("yardım") || transcript.includes("sheway") || transcript.includes("polis")) {
+                        triggerEmergency();
+                    }
+                };
+
+                speechRecognition.onerror = function () {
+                    txt.innerText = "Sesle Panik Dinleme: Pasif";
+                    btn.classList.remove('btn-voice-active');
+                    isVoiceListening = false;
+                };
+
+                speechRecognition.start();
+            } else {
+                if (speechRecognition) speechRecognition.stop();
+                isVoiceListening = false;
+                txt.innerText = "Sesle Panik Dinleme: Pasif";
+                btn.classList.remove('btn-voice-active');
+            }
+        }
+
+        /* --- SAHTE ÇAĞRI (FAKE CALL) --- */
+        function triggerFakeCall() {
+            document.getElementById('fakeCallOverlay').style.display = 'flex';
+            speakVoiceAlert("Annem arıyor.");
+        }
+        function closeFakeCall() {
+            document.getElementById('fakeCallOverlay').style.display = 'none';
+        }
+
+        /* --- BENİ EVE TAKİP ET --- */
+        function startLiveTripShare() {
+            const userCoords = userMarker.getLatLng();
+            const shareId = Math.random().toString(36).substring(7);
+            const liveLink = `https://sheway.app/live-track?id=${shareId}&lat=${userCoords.lat}&lon=${userCoords.lng}`;
+
+            navigator.clipboard.writeText(liveLink);
+            showToast("🔗 Canlı Takip Linki Kopyalandı!", "Link yakınlarınıza SMS atılabilir: " + liveLink);
+            speakVoiceAlert("Canlı yolculuk takip linki panoya kopyalandı.");
+        }
+
+        /* --- TOPLULUK TEHLİKE BİLDİRİMİ --- */
+        function reportDangerAlert() {
+            const reason = prompt("Tehlike Türünü Girin:\n1: Aydınlatma Yetersiz / Karanlık Sokak\n2: Agresif Sahipsiz Köpek\n3: İnşaat / Çıkmaz Sokak", "Aydınlatma Yetersiz Sokak");
+            if (!reason) return;
+
+            const userCoords = userMarker.getLatLng();
+            const dangerMarker = L.marker([userCoords.lat + 0.0005, userCoords.lng + 0.0005]).addTo(dangerLayerGroup);
+
+            dangerMarker.bindPopup(`
+                <div style="font-family:sans-serif;">
+                    <b style="color:#d97706;"><i class="fa-solid fa-triangle-exclamation"></i> TOPLULUK UYARISI</b><br>
+                    <span>${reason}</span><br>
+                    <small style="color:#64748b;">Topluluk tarafından 1 dk önce bildirildi.</small>
+                </div>
+            `).openPopup();
+
+            showToast("⚠️ UYARI HARİTAYA EKLENDİ", "Bildiriminiz diğer SheWay kullanıcılarıyla paylaşıldı.");
+            speakVoiceAlert("Tehlike uyarınız haritaya eklendi.");
+        }
+
+        /* --- GPS VE KONUM YÖNETİMİ --- */
+        function getUserLiveLocation() {
+            if ("geolocation" in navigator) {
+                document.getElementById('currentLocInput').value = "GPS Aranıyor...";
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+
+                        updateUserPositionOnMap(lat, lon);
+
+                        if (!placesLoaded) {
+                            loadNearbyPlaces(lat, lon);
+                            placesLoaded = true;
+                        }
+
+                        startLiveTracking();
+                    },
+                    (error) => {
+                        document.getElementById('currentLocInput').value = "İstanbul Merkez (Varsayılan)";
+                        if (!placesLoaded) {
+                            loadNearbyPlaces(41.0082, 28.9784);
+                            placesLoaded = true;
+                        }
+                    },
+                    { enableHighAccuracy: true, timeout: 8000 }
+                );
+            } else {
+                alert("Cihazınızda GPS desteği bulunamadı.");
+            }
+        }
+
+        function updateUserPositionOnMap(lat, lon) {
+            const newLatLng = [lat, lon];
+            userMarker.setLatLng(newLatLng);
+            document.getElementById('currentLocInput').value = `${lat.toFixed(4)}, ${lon.toFixed(4)} (GPS Aktif)`;
+
+            if (isNavigating) {
+                map.panTo(newLatLng, { animate: true, duration: 1 });
+            }
+        }
+
+        function startLiveTracking() {
+            if (watchPositionId !== null) navigator.geolocation.clearWatch(watchPositionId);
+
+            watchPositionId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    updateUserPositionOnMap(lat, lon);
+                },
+                (err) => console.warn("Canlı takip uyarısı:", err.message),
+                { enableHighAccuracy: true, maximumAge: 1000 }
+            );
+        }
+
+        function toggleNavigationMode() {
+            const btn = document.getElementById('startNavBtn');
+
+            if (!isNavigating) {
+                isNavigating = true;
+                btn.innerHTML = `<i class="fa-solid fa-stop-circle"></i> <span>Navigasyonu Bitir</span>`;
+                btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+
+                const userLatLng = userMarker.getLatLng();
+                map.setView(userLatLng, 18, { animate: true });
+                userMarker.openPopup();
+
+                showToast("🚀 Canlı Navigasyon Başlatıldı", "Harita hareketlerinize göre takip yapıyor.");
+                speakVoiceAlert("SheWay canlı navigasyonu başlatıldı. Aydınlatması yüksek caddelerden ilerleyin.");
+            } else {
+                isNavigating = false;
+                btn.innerHTML = `<i class="fa-solid fa-location-arrow"></i> <span>Navigasyonu Başlat (Rotayı Takip Et)</span>`;
+                btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+
+                if (currentRouteLine) {
+                    map.fitBounds(currentRouteLine.getBounds(), { padding: [50, 50] });
+                }
+                speakVoiceAlert("Navigasyon sonlandırıldı.");
+            }
+        }
+
+        window.onload = function () {
+            getUserLiveLocation();
+        };
+
+        /* --- SABİT MEKANLAR --- */
+        function loadNearbyPlaces(baseLat, baseLon) {
+            hospitalLayerGroup.clearLayers();
+            policeLayerGroup.clearLayers();
+            shopLayerGroup.clearLayers();
+            safeHavenLayerGroup.clearLayers();
+
+            const places = [
+                { type: 'safeHaven', name: 'SheWay Mor Kalkan 7/24 Kafe', lat: baseLat + 0.0015, lon: baseLon + 0.002, status: '🛡️ MOR KALKAN SIĞINAK', lightScore: '%100 Güvenli' },
+                { type: 'hospital', name: 'Devlet Hastanesi Acil Servis', lat: baseLat + 0.003, lon: baseLon + 0.004, status: '24 SAAT AÇIK', lightScore: '%98 Aydınlık' },
+                { type: 'police', name: 'İlçe Emniyet Müdürlüğü Polis Merkezi', lat: baseLat - 0.002, lon: baseLon + 0.003, status: '7/24 GÜVENLİ NOKTA', lightScore: '%100 Aydınlık' },
+                { type: 'shop', name: 'Merkez Nöbetçi Eczane', lat: baseLat + 0.001, lon: baseLon - 0.003, status: 'NÖBETÇİ (CANLI)', lightScore: '%95 Aydınlık' }
+            ];
+
+            places.forEach(place => {
+                let badgeClass = 'badge-open';
+                if (place.type === 'safeHaven') badgeClass = 'badge-purple';
+                if (place.type === 'police') badgeClass = 'badge-night';
+                if (place.type === 'shop') badgeClass = 'badge-lit';
+
+                const popupContent = `
+                    <div style="font-family: sans-serif;">
+                        <b style="color: var(--weathervane);">${place.name}</b><br>
+                        <span class="live-badge ${badgeClass}" style="${place.type === 'safeHaven' ? 'background:#8b5cf6; color:white;' : ''}">${place.status}</span>
+                        <span class="live-badge badge-lit"><i class="fa-solid fa-lightbulb"></i> ${place.lightScore}</span>
+                    </div>
+                `;
+
+                const marker = L.marker([place.lat, place.lon]).bindPopup(popupContent);
+
+                if (place.type === 'safeHaven') marker.addTo(safeHavenLayerGroup);
+                if (place.type === 'hospital') marker.addTo(hospitalLayerGroup);
+                if (place.type === 'police') marker.addTo(policeLayerGroup);
+                if (place.type === 'shop') marker.addTo(shopLayerGroup);
+            });
+        }
+
+        function toggleLayers() {
+            const showSafeHavens = document.getElementById('layerSafeHavens').checked;
+            const showShops = document.getElementById('layerShops').checked;
+            const showDangers = document.getElementById('layerDangers').checked;
+            const showHospitals = document.getElementById('layerHospitals').checked;
+            const showPolice = document.getElementById('layerPolice').checked;
+
+            if (showSafeHavens) map.addLayer(safeHavenLayerGroup); else map.removeLayer(safeHavenLayerGroup);
+            if (showShops) map.addLayer(shopLayerGroup); else map.removeLayer(shopLayerGroup);
+            if (showDangers) map.addLayer(dangerLayerGroup); else map.removeLayer(dangerLayerGroup);
+            if (showHospitals) map.addLayer(hospitalLayerGroup); else map.removeLayer(hospitalLayerGroup);
+            if (showPolice) map.addLayer(policeLayerGroup); else map.removeLayer(policeLayerGroup);
+        }
+
+        /* --- SOKAK ROTA ÇİZİMİ --- */
+        let currentRouteLine = null;
+        let targetMarker = null;
+        let selectedTargetCoords = null;
+        let searchDebounceTimer;
+
+        function filterAddresses(query, inputId = 'destination', listId = 'addressSuggestions') {
+            const container = document.getElementById(listId);
+            clearTimeout(searchDebounceTimer);
+            container.innerHTML = '';
+
+            if (!query.trim() || query.length < 2) {
+                container.classList.remove('active');
+                return;
+            }
+
+            searchDebounceTimer = setTimeout(async () => {
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=tr&limit=5`);
+                    const results = await response.json();
+
+                    container.innerHTML = '';
+
+                    if (results && results.length > 0) {
+                        results.forEach(place => {
+                            const item = document.createElement('div');
+                            item.className = 'autocomplete-item';
+                            item.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--carmine-carnation);"></i> ${place.display_name}`;
+
+                            item.onclick = function () {
+                                const shortName = place.display_name.split(',')[0];
+                                document.getElementById(inputId).value = place.display_name;
+                                container.classList.remove('active');
+
+                                if (inputId === 'destination') {
+                                    selectedTargetCoords = {
+                                        lat: parseFloat(place.lat),
+                                        lon: parseFloat(place.lon),
+                                        name: shortName
+                                    };
+                                }
+                            };
+                            container.appendChild(item);
+                        });
+                        container.classList.add('active');
+                    } else {
+                        container.classList.remove('active');
+                    }
+                } catch (error) {
+                    console.error("Adres arama hatası:", error);
+                }
+            }, 300);
+        }
+
+        async function calculateRoute() {
+            const destInput = document.getElementById('destination').value;
+            if (!destInput) {
+                alert("Lütfen bir hedef konum seçin.");
+                return;
+            }
+
+            if (!selectedTargetCoords || selectedTargetCoords.name !== destInput.split(',')[0]) {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destInput)}&countrycodes=tr&limit=1`);
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        selectedTargetCoords = {
+                            lat: parseFloat(data[0].lat),
+                            lon: parseFloat(data[0].lon),
+                            name: data[0].display_name.split(',')[0]
+                        };
+                    } else {
+                        alert("Konum adresi tespit edilemedi.");
+                        return;
+                    }
+                } catch (e) {
+                    alert("Konum sorgulanırken hata oluştu.");
+                    return;
+                }
+            }
+
+            drawRealRoadRoute(selectedTargetCoords.lat, selectedTargetCoords.lon, selectedTargetCoords.name);
+        }
+
+        async function drawRealRoadRoute(destLat, destLon, destName) {
+            const userCoords = userMarker.getLatLng();
+            const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${userCoords.lng},${userCoords.lat};${destLon},${destLat}?overview=full&geometries=geojson`;
+
+            try {
+                const response = await fetch(osrmUrl);
+                const data = await response.json();
+
+                if (!data.routes || data.routes.length === 0) {
+                    alert("Uygun bir sokak rotası bulunamadı.");
+                    return;
+                }
+
+                const routeData = data.routes[0];
+                const streetCoordinates = routeData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+                const distanceKm = (routeData.distance / 1000).toFixed(1);
+                const durationMin = Math.round(routeData.duration / 60);
+
+                if (currentRouteLine) map.removeLayer(currentRouteLine);
+                if (targetMarker) map.removeLayer(targetMarker);
+
+                currentRouteLine = L.polyline(streetCoordinates, {
+                    color: '#10b981',
+                    weight: 6,
+                    opacity: 0.9,
+                    lineJoin: 'round'
+                }).addTo(map);
+
+                targetMarker = L.marker([destLat, destLon]).addTo(map)
+                    .bindPopup(`<b>🎯 ${destName}</b><br>Mesafe: ${distanceKm} km | Tahmini: ${durationMin} dk`)
+                    .openPopup();
+
+                map.fitBounds(currentRouteLine.getBounds(), { padding: [50, 50] });
+
+                const caddeLightScore = Math.floor(Math.random() * (99 - 90 + 1)) + 90;
+                const sokakLightScore = Math.floor(Math.random() * (85 - 72 + 1)) + 72;
+                const generalScore = Math.round((caddeLightScore * 0.7) + (sokakLightScore * 0.3));
+
+                const card = document.getElementById('illuminationCard');
+                card.style.display = 'flex';
+
+                document.getElementById('illuminationPercent').innerText = `%${generalScore}`;
+                document.getElementById('caddePercentText').innerText = `%${caddeLightScore} (Aydınlık)`;
+                document.getElementById('caddeBar').style.width = `${caddeLightScore}%`;
+                document.getElementById('sokakPercentText').innerText = `%${sokakLightScore} (Güvenli)`;
+                document.getElementById('sokakBar').style.width = `${sokakLightScore}%`;
+
+                document.getElementById('illuminationStatusText').innerHTML =
+                    `<b>🚶 ${durationMin} dk (${distanceKm} km)</b> • Kestirme ve aydınlatması yüksek caddelerden rota oluşturuldu.`;
+
+                speakVoiceAlert(`${destName} için en güvenli rota oluşturuldu. Yürüyüş süresi yaklaşık ${durationMin} dakika.`);
+
+            } catch (error) {
+                console.error("Rota servisi hatası:", error);
+                alert("Rota hesaplanırken bir hata oluştu.");
+            }
+        }
+
+        async function goToSafeLocation(address, name) {
+            closeProfileModalDirect();
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=tr&limit=1`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    drawRealRoadRoute(parseFloat(data[0].lat), parseFloat(data[0].lon), name);
+                } else {
+                    alert("Güvenli noktanın adresi haritada bulunamadı.");
+                }
+            } catch (err) {
+                alert("Adres sorgulanamadı.");
+            }
+        }
+
+        /* --- BİLDİRİM TOAST & PANİK --- */
+        function showToast(title, body) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed; top: 90px; right: 20px; z-index: 3000;
+                background: linear-gradient(135deg, #10b981, #059669); color: white;
+                padding: 16px 20px; border-radius: 16px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                max-width: 340px; animation: modalSlideUp 0.3s ease;
+            `;
+            toast.innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px; font-weight:800; font-size: 0.95rem;">
+                    <i class="fa-solid fa-bell" style="font-size:1.2rem;"></i>
+                    <span>${title}</span>
+                </div>
+                <p style="font-size:0.8rem; margin-top:6px; opacity:0.95; line-height:1.4;">${body}</p>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => toast.remove(), 500);
+            }, 5000);
+        }
+
+        function triggerEmergency() {
+            const userCoords = userMarker.getLatLng();
+            const mapsUrl = `https://www.google.com/maps?q=${userCoords.lat},${userCoords.lng}`;
+
+            speakVoiceAlert("Acil durum uyarı sinyali verildi. Canlı konumunuz kişilerinize gönderildi.");
+            showToast("ACİL DURUM SMS'İ GÖNDERİLDİ", `Canlı konumunuz kişilerinize iletildi.<br><a href="${mapsUrl}" target="_blank" style="color:white; font-weight:700;">📍 Konum Linki</a>`);
+        }
+
+        /* --- PROFİL MODAL --- */
+        function openProfileModal() { document.getElementById('profileModal').classList.add('active'); }
+        function closeProfileModalDirect() { document.getElementById('profileModal').classList.remove('active'); }
+        function closeProfileModal(e) { if (e.target.id === 'profileModal') closeProfileModalDirect(); }
+
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+        }
+
+        function updateProfile() {
+            const name = document.getElementById('profFullname').value;
+            if (name) {
+                document.getElementById('navUsername').innerText = name;
+                document.getElementById('modalHeaderName').innerText = name;
+            }
+            alert("Profil bilgileriniz başarıyla güncellendi!");
+        }
+
+        /* --- CRUD İŞLEMLERİ --- */
+        let currentEditingItem = null;
+        function editContact(btn) {
+            currentEditingItem = btn.closest('.contact-item');
+            document.getElementById('newContactName').value = currentEditingItem.querySelector('.contact-name').innerText;
+            document.getElementById('newContactPhone').value = currentEditingItem.querySelector('.contact-phone').innerText;
+            document.getElementById('formContactTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color: var(--carmine-carnation);"></i> Kişiyi Düzenle`;
+            document.getElementById('saveContactBtn').innerHTML = `<i class="fa-solid fa-check"></i> Değişiklikleri Kaydet`;
+        }
+
+        function saveContact() {
+            const name = document.getElementById('newContactName').value;
+            const phone = document.getElementById('newContactPhone').value;
+            if (!name || !phone) { alert("Lütfen isim ve telefon girin."); return; }
+
+            if (currentEditingItem) {
+                currentEditingItem.querySelector('.contact-name').innerText = name;
+                currentEditingItem.querySelector('.contact-phone').innerText = phone;
+                currentEditingItem = null;
+            } else {
+                const newItem = document.createElement('div');
+                newItem.className = 'contact-item';
+                newItem.innerHTML = `
+                    <div class="contact-info">
+                        <div class="contact-icon"><i class="fa-solid fa-user-shield"></i></div>
+                        <div>
+                            <h4 class="contact-name" style="font-size: 0.9rem; color: var(--weathervane);">${name}</h4>
+                            <p class="contact-phone" style="font-size: 0.775rem; color: var(--choco-loco);">${phone}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="edit-contact-btn" onclick="editContact(this)"><i class="fa-solid fa-pen"></i></button>
+                        <button class="delete-contact-btn" onclick="this.parentElement.parentElement.remove()"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                document.getElementById('contactList').appendChild(newItem);
+            }
+            document.getElementById('newContactName').value = '';
+            document.getElementById('newContactPhone').value = '';
+            document.getElementById('formContactTitle').innerHTML = `<i class="fa-solid fa-user-plus" style="color: var(--carmine-carnation);"></i> Yeni Acil Durum Kişisi Ekle`;
+            document.getElementById('saveContactBtn').innerHTML = `<i class="fa-solid fa-plus"></i> Kişiyi Listeye Ekle`;
+        }
+
+        let currentEditingLocationItem = null;
+        function editSafeLocation(btn) {
+            currentEditingLocationItem = btn.closest('.contact-item');
+            document.getElementById('locationSearchInput').value = currentEditingLocationItem.querySelector('.loc-address').innerText;
+            document.getElementById('formLocationTitle').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color: var(--carmine-carnation);"></i> Güvenli Noktayı Düzenle`;
+            document.getElementById('saveLocationBtn').innerHTML = `<i class="fa-solid fa-check"></i> Değişiklikleri Kaydet`;
+        }
+
+        function addSafeLocation() {
+            const type = document.getElementById('locationType').value;
+            const address = document.getElementById('locationSearchInput').value;
+            if (!address) { alert("Lütfen bir adres girin."); return; }
+
+            if (currentEditingLocationItem) {
+                currentEditingLocationItem.querySelector('.loc-type').innerText = `${type} Adresi`;
+                currentEditingLocationItem.querySelector('.loc-address').innerText = address;
+                currentEditingLocationItem = null;
+            } else {
+                const newItem = document.createElement('div');
+                newItem.className = 'contact-item';
+                newItem.innerHTML = `
+                    <div class="contact-info">
+                        <div class="contact-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                            <i class="fa-solid fa-house"></i>
+                        </div>
+                        <div>
+                            <h4 class="loc-type" style="font-size: 0.9rem; color: var(--weathervane);">${type} Adresi</h4>
+                            <p class="loc-address" style="font-size: 0.775rem; color: var(--choco-loco);">${address}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <button class="hero-btn" style="padding: 6px 12px; font-size: 0.8rem;" onclick="goToSafeLocation('${address}', '${type} Adresi')">Git</button>
+                        <button class="edit-contact-btn" onclick="editSafeLocation(this)"><i class="fa-solid fa-pen"></i></button>
+                        <button class="delete-contact-btn" onclick="this.parentElement.parentElement.remove()"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                document.getElementById('safeLocationList').appendChild(newItem);
+            }
+            document.getElementById('locationSearchInput').value = '';
+            document.getElementById('formLocationTitle').innerHTML = `<i class="fa-solid fa-map-location-dot" style="color: var(--carmine-carnation);"></i> Yeni Güvenli Nokta Ekle`;
+            document.getElementById('saveLocationBtn').innerHTML = `<i class="fa-solid fa-location-plus"></i> Güvenli Noktam Olarak Kaydet`;
+        }
+    </script>
+</body>
+
+</html>

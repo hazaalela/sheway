@@ -1,0 +1,11 @@
+﻿/*------------------------
+
+IF DB_ID('SheWay') IS NULL
+BEGIN
+    CREATE DATABASE SheWay;
+END;
+GO
+
+------------------------*/
+
+Tamamlanma süresi:2026-10-29T20:58:11.6811437+03:00

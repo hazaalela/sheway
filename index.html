@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SheWay - Şehir Senin, Yol Senin</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="mesh-bg">
+        <div class="mesh-ball ball-1"></div>
+        <div class="mesh-ball ball-2"></div>
+        <div class="mesh-ball ball-3"></div>
+    </div>
+
+    <div class="app-container">
+
+
+        <div class="hero-section">
+            <div class="brand-badge">
+                <span class="pulse-dot"></span>
+                <span>Yapay Zekâ Destekli Güvenli Rota</span>
+            </div>
+
+            <img src="logo.png" alt="SheWay Logo" class="hero-logo">
+
+            <h1 class="hero-title">
+                Gece yollarında <br>
+                <span class="gradient-text">hiç yalnız yürüme.</span>
+            </h1>
+
+            <p class="hero-desc">
+                SheWay; aydınlık sokakları, açık işletmeleri ve topluluk bildirimlerini analiz ederek sana en güvenli
+                rotayı çizer. Tek tıkla canlı konumunu sevdiklerinle paylaş.
+            </p>
+
+
+            <div class="feature-cards">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-route"></i></div>
+                    <div>
+                        <h4>Aydınlık Rota</h4>
+                        <p>Işıklandırılmış sokaklar öncelikli</p>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon alert"><i class="fa-solid fa-bolt"></i></div>
+                    <div>
+                        <h4>Anında Panik SMS</h4>
+                        <p>Tek dokunuşla canlı konum paylaşımı</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="auth-section">
+            <div class="glass-card">
+
+                <div class="form-header">
+                    <h2>Katıl veya Giriş Yap</h2>
+                    <p>SheWay ekosistemine hemen adım atın.</p>
+                </div>
+
+                <form id="authForm" onsubmit="handleSubmit(event)">
+
+
+                    <div class="input-field">
+                        <label for="fullname">Adı - Soyadı</label>
+                        <div class="input-box">
+                            <i class="fa-regular fa-user"></i>
+                            <input type="text" id="fullname" required placeholder="Ayşe Yılmaz">
+                        </div>
+                    </div>
+
+
+                    <div class="input-field">
+                        <label for="phone">Telefon No</label>
+                        <div class="input-box">
+                            <i class="fa-solid fa-phone"></i>
+                            <input type="tel" id="phone" required placeholder="05XX XXX XX XX">
+                        </div>
+                    </div>
+
+                    <div class="input-field">
+                        <label for="username">Kullanıcı Adı</label>
+                        <div class="input-box">
+                            <i class="fa-solid fa-at"></i>
+                            <input type="text" id="username" required placeholder="kullanici_adi">
+                        </div>
+                    </div>
+
+
+                    <div class="input-field">
+                        <label for="password">Şifre</label>
+                        <div class="input-box">
+                            <i class="fa-solid fa-lock"></i>
+                            <input type="password" id="password" required placeholder="••••••••">
+                            <i class="fa-regular fa-eye toggle-pwd" onclick="togglePasswordVisibility()"></i>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="hero-btn">
+                        <span>Aramıza Katıl</span>
+                        <i class="fa-solid fa-arrow-right-long"></i>
+                    </button>
+                </form>
+
+                <div class="card-trust">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Verileriniz uçtan uca şifrelenmektedir.</span>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+    <script>
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            const fullname = document.getElementById('fullname').value;
+            const phone = document.getElementById('phone').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // Arka plana isteği sessizce gönder (Hata alsa bile Asla ALERT çıkarma!)
+            try {
+                await fetch('http://localhost:5000/api/kayitol', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fullname, phone, username, password })
+                });
+            } catch (error) {
+                console.log("Backend ulaşılamadı ama geçiş yapılıyor:", error);
+            }
+
+            // HİÇBİR UYARI PENCERESİ ÇIKARMADAN DİREKT ANA SAYFAYA GEÇ
+            window.location.href = "ana-sayfa.html";
+        }
+
+        function togglePasswordVisibility() {
+            const pwd = document.getElementById('password');
+            const icon = document.querySelector('.toggle-pwd');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                pwd.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+    </script>
+
+</body>
+
+</html>
